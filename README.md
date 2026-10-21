@@ -1,35 +1,49 @@
 # WarungBot ☕
 
-> **WarungBot - Asisten Pintar Kedai Kopi (Rals Coffee Shop)**  
+> **WarungBot — Asisten Pintar Kedai Kopi (Rals Coffee Shop)**  
 > Built with Google Cloud Vertex AI, Agent Development Kit (ADK), Gemini 2.5 Flash, Cloud Firestore, Cloud Storage, and A2UI.
 
 ![WarungBot Demo](demo.gif)
 
+---
+
 ## 📌 Overview
 
-**WarungBot** is an autonomous AI assistant designed specifically for Indonesian coffee shop owners and staff. It streamlines daily café operations by managing inventory, recording sales transactions, computing profit margins in Indonesian Rupiah (IDR), analyzing real-time weather conditions, and generating marketing visuals (promotional posters and omni videos).
+**WarungBot** is an autonomous AI assistant built for small Indonesian coffee shop (warung kopi) owners and staff. It manages daily café operations by querying real-time inventory from Firestore, recording sales transactions in Indonesian Rupiah (IDR), fetching live weather data to recommend timely promotions, generating marketing visuals (promotional posters & video clips) with Gemini and uploading them to Cloud Storage, and presenting structured data as rich A2UI cards.
 
 ---
 
-## ✨ Features & Tools
+## 🛠️ Google Cloud Services & Tools Implemented
 
-- 📦 **Inventory & Stock Management (`get_low_stock`, `update_stock`, `list_products`)**:
-  - Live queries against **Google Cloud Firestore**.
-  - Automatically flags items falling below safety threshold levels (e.g. Croissant, Matcha Latte).
-- 💰 **Sales Recording & Analytics (`record_sale`, `get_sales_summary`)**:
-  - Records real-time transactions and computes revenue, cost of goods sold (COGS), and profit margins in IDR.
-- 🌦️ **Weather Integration (`get_weather`)**:
-  - Fetches current weather and temperatures to suggest weather-appropriate promotions (e.g., iced coffee on hot days).
-- 🎨 **Marketing Asset Generation (`generate_poster`, `generate_video`)**:
-  - Generates high-quality promotional posters using `gemini-3.1-flash-lite-image`.
-  - Generates promo videos using `gemini-omni-flash-preview`.
-  - Automatically stores generated assets in **Google Cloud Storage** and returns public URLs.
-- 💻 **Agent Engine Code Execution Sandbox**:
-  - Executes Python calculations safely in Vertex AI Reasoning Engine Code Sandbox.
-- 🎴 **Rich A2UI Display**:
-  - Renders interactive cards, summary tables, and product images natively in ADK Playground and web frontends.
-- 🌐 **Custom Web Frontend & A2A Proxy**:
-  - Includes a lightweight FastAPI proxy and responsive branded web interface communicating via the **A2A Protocol**.
+Based on the codebase in `app/` and `agents-cli-manifest.yaml`, WarungBot wires up the following tools and services:
+
+| Component / Service | Implementation in Code | Description |
+|---|---|---|
+| 🤖 **Reasoning Core** | `google.adk` + `Gemini(model="gemini-2.5-flash")` | Core reasoning agent handling user intent, tool selection, and conversational Indonesian language. |
+| 🗄️ **Google Cloud Firestore** | `google.cloud.firestore` (`app/tools/firestore_tools.py`) | Structured database managing `products` (inventory stock, prices, minimum stock thresholds) and `sales` (transaction logs). |
+| 🖼️ **Google Cloud Storage** | `google.cloud.storage` (`app/tools/image_tool.py`, `app/tools/video_tool.py`) | Media bucket storing generated marketing posters (`/posters`) and video teasers (`/videos`) with public asset URLs. |
+| 🎨 **Image Generation** | `gemini-3.1-flash-lite-image` via `google.genai` SDK | Generates aesthetic promotional posters for coffee drinks and pastries. |
+| 🎬 **Video Generation** | `gemini-omni-flash-preview` via `google.genai` SDK | Generates short promotional video clips for menu items. |
+| 🧪 **Code Sandbox** | `AgentEngineSandboxCodeExecutor` | Executes Python code in a Vertex AI Reasoning Engine sandbox for profit margin and financial calculations in IDR. |
+| 🌦️ **Weather Integration** | Open-Meteo REST API (`app/tools/weather_tool.py`) | Real-time weather and temperature lookup for Indonesian cities (Jakarta, Bandung, Surabaya, etc.) to drive contextual menu promos. |
+| 🎴 **A2UI (Agent-to-User Interface)** | `a2ui.schema.manager` + `a2ui_callback` | Emits structured v0.8 A2UI JSON components (`Card`, `Column`, `Row`, `Text`, `Image`) for catalog and stock alert cards. |
+| 🌐 **Frontend & A2A Proxy** | FastAPI + `a2a.client` (`frontend/`) | Responsive web chat interface with an A2A protocol proxy connecting directly to Agent Runtime. |
+
+> [!NOTE]
+> **Planned, Not Yet Implemented:** Cross-session Vertex AI Memory Bank (`PreloadMemoryTool`) was proposed in the project brief for remembering owner aesthetic preferences across sessions, but is not currently wired into the active ADK agent configuration (`session_type: none`).
+
+---
+
+## 🔧 Implemented Agent Tools
+
+1. **`list_products(category)`**: Queries Firestore for active menu items, stock counts, and prices in Rupiah.
+2. **`get_low_stock()`**: Filters inventory for items at or below minimum threshold (e.g., Croissant, Matcha Latte).
+3. **`record_sale(product_id, quantity, payment_method, note)`**: Records completed transactions into Firestore `sales` collection and deducts inventory stock.
+4. **`update_stock(product_id, new_stock, reason)`**: Updates item inventory levels in Firestore.
+5. **`get_sales_summary(days)`**: Aggregates revenue, units sold, and top products over a specified time window.
+6. **`get_weather(city)`**: Checks temperature and conditions (cerah, berawan, hujan) to recommend cold drinks or warm pastries.
+7. **`generate_poster(item_name, prompt_details)`**: Creates a marketing poster with `gemini-3.1-flash-lite-image` and saves it to Cloud Storage.
+8. **`generate_video(item_name, prompt_details)`**: Creates a short video clip with `gemini-omni-flash-preview` and uploads it to Cloud Storage.
 
 ---
 
@@ -38,55 +52,52 @@
 ```
 warungbot/
 ├── app/
-│   ├── agent.py               # Root ADK agent definition & callbacks
-│   ├── a2ui_utils.py          # A2UI v0.8 schema manager & response transformer
-│   ├── app_utils/             # Agent helpers
-│   └── tools/                 # Custom domain tools
+│   ├── agent.py               # Root ADK agent configuration, instruction & tools
+│   ├── a2ui_utils.py          # A2UI v0.8 schema manager & callback transformer
+│   └── tools/                 # Domain tools
 │       ├── firestore_tools.py # Firestore inventory & sales tools
-│       ├── weather_tool.py    # Live weather lookup tool
-│       ├── image_tool.py      # Gemini image generation & GCS upload tool
-│       └── video_tool.py      # Gemini Omni video generation & GCS upload tool
-├── frontend/                  # Custom chat web frontend
+│       ├── weather_tool.py    # Open-Meteo live weather tool
+│       ├── image_tool.py      # Gemini image generation & Cloud Storage upload
+│       └── video_tool.py      # Gemini Omni video generation & Cloud Storage upload
+├── frontend/                  # Web chat interface
 │   ├── main.py                # FastAPI proxy with A2A client
 │   └── static/
-│       └── index.html         # Branded responsive chat interface
-├── demo.gif                   # Recorded agent walkthrough
-├── project_brief.md           # Project specification & brief
+│       └── index.html         # Responsive coffee shop UI & A2UI card renderer
+├── demo.gif                   # Looping agent demo recording
+├── project_brief.md           # Project brief & tool coverage specification
+├── seed_firestore.py          # Script to populate initial Firestore inventory data
 ├── pyproject.toml             # Python dependencies
-└── agents-cli-manifest.yaml   # Agent manifest
+└── agents-cli-manifest.yaml   # ADK agent manifest
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Setup & Local Execution
 
-### 1. Requirements
+### 1. Prerequisites
 - Python 3.11+
 - [`uv`](https://docs.astral.sh/uv/) package manager
-- `google-agents-cli`
-- Google Cloud SDK (`gcloud`) configured with project permissions
+- Google Cloud SDK (`gcloud`) with credentials configured:
+  ```bash
+  gcloud auth application-default login
+  ```
 
-### 2. Install Dependencies
+### 2. Install Dependencies & Seed Firestore
 ```bash
+# Sync Python virtual environment
 uv sync
+
+# Populate Firestore with initial coffee shop products and sales data
+uv run python seed_firestore.py
 ```
 
-### 3. Run Agent Locally (ADK Playground)
+### 3. Run the Agent Locally in ADK Web UI
 ```bash
 uv run adk web . --host 127.0.0.1 --port 8080 --allow_origins '*'
 ```
-Open `http://localhost:8080/dev-ui/?app=app` in your browser.
 
-### 4. Run Custom Web Chat Frontend
+### 4. Run the Custom Web Frontend Proxy
 ```bash
 cd frontend
-export AGENT_ENGINE_RESOURCE_NAME="projects/<project-id>/locations/<region>/reasoningEngines/<id>"
-export AGENT_DIRECTORY="app"
-uv run python main.py
+uv run uvicorn main:app --host 127.0.0.1 --port 8000
 ```
-Open `http://localhost:8080` in your browser.
-
----
-
-## 🛡️ License
-Built during the **Build with Gemini** workshop.
