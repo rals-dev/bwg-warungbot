@@ -14,9 +14,11 @@
 # limitations under the License.
 
 from google.adk.agents import Agent
+from google.adk.agents.callback_context import CallbackContext
 from google.adk.apps import App
 from google.adk.models import Gemini
 from google.adk.code_executors import AgentEngineSandboxCodeExecutor
+from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from google.genai import types
 
 from a2ui.schema.manager import A2uiSchemaManager
@@ -34,6 +36,11 @@ from app.tools.weather_tool import get_weather
 from app.tools.image_tool import generate_poster
 from app.tools.video_tool import generate_video
 
+async def generate_memories_callback(callback_context: CallbackContext):
+    """Save salient facts and owner preferences from the session into Memory Bank."""
+    await callback_context.add_session_to_memory()
+    return None
+
 MODEL = "gemini-2.5-flash"
 SANDBOX_RESOURCE_NAME = "projects/500321808777/locations/us-east1/reasoningEngines/1245785157177180160/sandboxEnvironments/6531560863873105920"
 
@@ -50,15 +57,16 @@ ROLE_DESCRIPTION = """You are WarungBot, an intelligent, friendly, and helpful a
 
 Key guidelines:
 1. Always use the available tools to check or modify inventory stock and financial metrics. Never guess or hallucinate stock levels, prices, or revenue numbers.
-2. For complex financial calculations, profit margin modeling, or data analysis, use Python code execution in the sandbox to calculate accurate results.
-3. When the user asks what to promote or mentions the weather, call `get_weather` first. Then call `list_products` (and `get_low_stock` if relevant) and recommend only products that actually exist in the inventory and have sufficient stock. Never guess weather data.
-4. When the user requests a marketing poster, flyer, or promotional image for a menu item, call `generate_poster` with the item name and relevant design themes. Always provide the resulting public image URL and summarize the promo.
-5. When the user requests a promotional video clip, animated teaser, or short video for a menu item, call `generate_video` with the item name and motion/aesthetic details. Always provide the resulting public video URL and describe the video.
-6. Before calling `record_sale` or `update_stock`, always confirm the specific transaction details with the user (e.g., product name, quantity, total price, or new stock count).
-7. Always format prices and monetary amounts in Indonesian Rupiah (e.g. Rp18.000, Rp25.000, Rp500.000).
-8. Be proactive: if you notice low-stock items while answering inventory queries or recording sales, gently alert the owner.
-9. When presenting menu lists, low stock alerts, sales summaries, promo recommendations, or poster previews, generate clean, compact A2UI cards using Card, Column, Row, Text, and Image (using the public https URL).
-10. Communicate warmly, clearly, and concisely.
+2. You have access to long-term memory across sessions. Proactively remember and respect the coffee shop owner's stated brand preferences, design aesthetics (e.g. vintage rustic, modern minimalist), color palettes, signature recipes, and recurring promotional habits.
+3. For complex financial calculations, profit margin modeling, or data analysis, use Python code execution in the sandbox to calculate accurate results.
+4. When the user asks what to promote or mentions the weather, call `get_weather` first. Then call `list_products` (and `get_low_stock` if relevant) and recommend only products that actually exist in the inventory and have sufficient stock. Never guess weather data.
+5. When the user requests a marketing poster, flyer, or promotional image for a menu item, call `generate_poster` with the item name and relevant design themes. Always incorporate remembered aesthetic preferences. Always provide the resulting public image URL and summarize the promo.
+6. When the user requests a promotional video clip, animated teaser, or short video for a menu item, call `generate_video` with the item name and motion/aesthetic details. Always provide the resulting public video URL and describe the video.
+7. Before calling `record_sale` or `update_stock`, always confirm the specific transaction details with the user (e.g., product name, quantity, total price, or new stock count).
+8. Always format prices and monetary amounts in Indonesian Rupiah (e.g. Rp18.000, Rp25.000, Rp500.000).
+9. Be proactive: if you notice low-stock items while answering inventory queries or recording sales, gently alert the owner.
+10. When presenting menu lists, low stock alerts, sales summaries, promo recommendations, or poster previews, generate clean, compact A2UI cards using Card, Column, Row, Text, and Image (using the public https URL).
+11. Communicate warmly, clearly, and concisely.
 """
 
 UI_DESCRIPTION = (
@@ -96,6 +104,7 @@ root_agent = Agent(
     instruction=instruction,
     code_executor=code_executor,
     tools=[
+        PreloadMemoryTool(),
         list_products,
         get_low_stock,
         record_sale,
@@ -106,6 +115,7 @@ root_agent = Agent(
         generate_video,
     ],
     after_model_callback=a2ui_callback,
+    after_agent_callback=generate_memories_callback,
 )
 
 app = App(

@@ -20,6 +20,7 @@ Based on the codebase in `app/` and `agents-cli-manifest.yaml`, WarungBot wires 
 | Component / Service | Implementation in Code | Description |
 |---|---|---|
 | 🤖 **Reasoning Core** | `google.adk` + `Gemini(model="gemini-2.5-flash")` | Core reasoning agent handling user intent, tool selection, and conversational Indonesian language. |
+| 🧠 **Vertex AI Memory Bank** | `PreloadMemoryTool` + `after_agent_callback` (`add_session_to_memory`) | Cross-session long-term memory that extracts and recalls owner preferences (e.g. brand aesthetics, signature recipes, promotional styles). |
 | 🗄️ **Google Cloud Firestore** | `google.cloud.firestore` (`app/tools/firestore_tools.py`) | Structured database managing `products` (inventory stock, prices, minimum stock thresholds) and `sales` (transaction logs). |
 | 🖼️ **Google Cloud Storage** | `google.cloud.storage` (`app/tools/image_tool.py`, `app/tools/video_tool.py`) | Media bucket storing generated marketing posters (`/posters`) and video teasers (`/videos`) with public asset URLs. |
 | 🎨 **Image Generation** | `gemini-3.1-flash-lite-image` via `google.genai` SDK | Generates aesthetic promotional posters for coffee drinks and pastries. |
@@ -29,21 +30,19 @@ Based on the codebase in `app/` and `agents-cli-manifest.yaml`, WarungBot wires 
 | 🎴 **A2UI (Agent-to-User Interface)** | `a2ui.schema.manager` + `a2ui_callback` | Emits structured v0.8 A2UI JSON components (`Card`, `Column`, `Row`, `Text`, `Image`) for catalog and stock alert cards. |
 | 🌐 **Frontend & A2A Proxy** | FastAPI + `a2a.client` (`frontend/`) | Responsive web chat interface with an A2A protocol proxy connecting directly to Agent Runtime. |
 
-> [!NOTE]
-> **Planned, Not Yet Implemented:** Cross-session Vertex AI Memory Bank (`PreloadMemoryTool`) was proposed in the project brief for remembering owner aesthetic preferences across sessions, but is not currently wired into the active ADK agent configuration (`session_type: none`).
-
 ---
 
 ## 🔧 Implemented Agent Tools
 
-1. **`list_products(category)`**: Queries Firestore for active menu items, stock counts, and prices in Rupiah.
-2. **`get_low_stock()`**: Filters inventory for items at or below minimum threshold (e.g., Croissant, Matcha Latte).
-3. **`record_sale(product_id, quantity, payment_method, note)`**: Records completed transactions into Firestore `sales` collection and deducts inventory stock.
-4. **`update_stock(product_id, new_stock, reason)`**: Updates item inventory levels in Firestore.
-5. **`get_sales_summary(days)`**: Aggregates revenue, units sold, and top products over a specified time window.
-6. **`get_weather(city)`**: Checks temperature and conditions (cerah, berawan, hujan) to recommend cold drinks or warm pastries.
-7. **`generate_poster(item_name, prompt_details)`**: Creates a marketing poster with `gemini-3.1-flash-lite-image` and saves it to Cloud Storage.
-8. **`generate_video(item_name, prompt_details)`**: Creates a short video clip with `gemini-omni-flash-preview` and uploads it to Cloud Storage.
+1. **`PreloadMemoryTool`**: Automatically searches and injects relevant cross-session owner memories into the system prompt at the start of every turn.
+2. **`list_products(category)`**: Queries Firestore for active menu items, stock counts, and prices in Rupiah.
+3. **`get_low_stock()`**: Filters inventory for items at or below minimum threshold (e.g., Croissant, Matcha Latte).
+4. **`record_sale(product_id, quantity, payment_method, note)`**: Records completed transactions into Firestore `sales` collection and deducts inventory stock.
+5. **`update_stock(product_id, new_stock, reason)`**: Updates item inventory levels in Firestore.
+6. **`get_sales_summary(days)`**: Aggregates revenue, units sold, and top products over a specified time window.
+7. **`get_weather(city)`**: Checks temperature and conditions (cerah, berawan, hujan) to recommend cold drinks or warm pastries.
+8. **`generate_poster(item_name, prompt_details)`**: Creates a marketing poster with `gemini-3.1-flash-lite-image` and saves it to Cloud Storage.
+9. **`generate_video(item_name, prompt_details)`**: Creates a short video clip with `gemini-omni-flash-preview` and uploads it to Cloud Storage.
 
 ---
 
