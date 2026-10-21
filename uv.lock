@@ -3252,6 +3252,7 @@ dependencies = [
     { name = "google-cloud-firestore" },
     { name = "google-cloud-logging" },
     { name = "google-cloud-storage" },
+    { name = "google-genai" },
     { name = "opentelemetry-resourcedetector-gcp" },
     { name = "protobuf" },
 ]
@@ -3276,7 +3277,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "a2a-sdk", extras = ["http-server"], specifier = ">=0.3.0" },
+    { name = "a2a-sdk", extras = ["http-server"], specifier = ">=0.3.0,<0.4.0" },
     { name = "a2ui-agent-sdk", specifier = ">=0.4.0,<0.5.0" },
     { name = "aiohttp", specifier = ">=3.13.4" },
     { name = "codespell", marker = "extra == 'lint'", specifier = ">=2.2.0,<3.0.0" },
@@ -3288,6 +3289,7 @@ requires-dist = [
     { name = "google-cloud-firestore", specifier = ">=2.34.1" },
     { name = "google-cloud-logging", specifier = ">=3.12.0,<4.0.0" },
     { name = "google-cloud-storage", specifier = ">=3.13.1" },
+    { name = "google-genai", specifier = ">=1.0.0" },
     { name = "opentelemetry-resourcedetector-gcp", specifier = "<=1.12.0a0" },
     { name = "protobuf", specifier = ">=6.31.1,<7.0.0" },
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.4.6,<1.0.0" },
